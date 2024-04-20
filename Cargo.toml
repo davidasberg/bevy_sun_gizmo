@@ -1,0 +1,24 @@
+[package]
+name = "bevy_sun_gizmo"
+version = "0.1.0"
+edition = "2021"
+authors = ["davidasberg"]
+description = "A simple gizmo for directional lights in Bevy"
+keywords = ["bevy", "development", "gizmo", "directional light"]
+categories = ["game-development"]
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/davidasberg/bevy_sun_gizmo"
+homepage = "https://github.com/davidasberg/bevy_sun_gizmo"
+readme = "README.md"
+
+
+[dependencies]
+bevy = { version = "0.13", default-features = false, features = [
+    "bevy_pbr",
+    "bevy_render",
+    "bevy_gizmos",
+] }
+
+[dev-dependencies]
+bevy = "0.13"
+bevy_panorbit_camera = "0.17.0"
