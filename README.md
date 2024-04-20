@@ -5,7 +5,7 @@
   <h1>Bevy Sun Gizmo</h1>
 </div>
 
-<!-- ![A screen recording showing the gizmo in actcarion]( "Demo of bevy_sun_gizmo") -->
+![A screen recording showing the gizmo in action](https://github.com/davidasberg/bevy_sun_gizmo/assets/47108520/f609f647-d06f-44fa-8ef6-8b7e1d4530ee)
 
 ## Summary
 
