@@ -12,8 +12,6 @@ pub struct SunGizmoPlugin {
     pub size: f32,
     /// Time in seconds the gizmo persists after being activated by the user
     pub persist_time: f32,
-    /// The combination of keys that will activate the gizmo
-    pub key_bindings: Vec<KeyCode>,
     /// The sensitivity of the mouse controller
     pub sensitivity: f32,
     /// Line width of the gizmo
@@ -26,7 +24,6 @@ impl Default for SunGizmoPlugin {
             position: Vec2::new(0.7, 0.7),
             size: 0.1,
             persist_time: 5.0,
-            key_bindings: vec![KeyCode::ControlRight, KeyCode::KeyL],
             sensitivity: 0.5,
             line_width: 4.0,
         }
@@ -42,17 +39,16 @@ impl Plugin for SunGizmoPlugin {
             )
             .add_event::<SunUpdatedEvent>()
             .insert_resource(SunGizmoControlConfig {
-                key_bindings: self.key_bindings.clone(),
                 sensitivity: self.sensitivity,
             })
             .insert_gizmo_group(
                 SunGizmoGroup {
-                    pos: self.position,
-                    size: self.size,
-                    persist_time: self.persist_time,
+                    pos: Vec2::new(0.7, 0.7),
+                    size: 0.1,
+                    persist_time: 5.0,
                 },
                 GizmoConfig {
-                    line_width: self.line_width,
+                    line_width: 4.0,
                     depth_bias: -1.0,
                     ..default()
                 },
@@ -60,9 +56,32 @@ impl Plugin for SunGizmoPlugin {
     }
 }
 
+/// Entities with this component will be shown in the sun gizmo
+/// and are controlled by using the key bindings
+#[derive(Component)]
+pub struct SunGizmo {
+    /// The color of this specific gizmo
+    pub color: Color,
+    /// The combination of keys that will allow the user to move
+    /// this particular gizmo
+    pub key_bindings: Vec<KeyCode>,
+}
+
+impl Default for SunGizmo {
+    fn default() -> Self {
+        Self {
+            color: Color::YELLOW,
+            key_bindings: vec![KeyCode::AltLeft, KeyCode::Digit1],
+        }
+    }
+}
+
+/// The camera that is used for drawing the gizmo
+#[derive(Component)]
+pub struct SunGizmoCamera;
+
 #[derive(Resource)]
 struct SunGizmoControlConfig {
-    pub key_bindings: Vec<KeyCode>,
     pub sensitivity: f32,
 }
 
@@ -77,37 +96,35 @@ struct SunGizmoGroup {
 struct SunUpdatedEvent;
 
 fn update_sun(
-    mut query: Query<&mut Transform, With<DirectionalLight>>,
+    mut query: Query<(&mut Transform, &SunGizmo)>,
     mut mouse: EventReader<MouseMotion>,
     mut event_writer: EventWriter<SunUpdatedEvent>,
     input: Res<ButtonInput<KeyCode>>,
     config: Res<SunGizmoControlConfig>,
     time: Res<Time>,
 ) {
-    let Ok(mut transform) = query.get_single_mut() else {
-        return;
-    };
+    for (mut transform, sun_gizmo) in query.iter_mut() {
+        if input.all_pressed(sun_gizmo.key_bindings.clone()) {
+            let mut delta = Vec2::ZERO;
+            for event in mouse.read() {
+                delta += event.delta * config.sensitivity;
+            }
 
-    if input.all_pressed(config.key_bindings.clone()) {
-        let mut delta = Vec2::ZERO;
-        for event in mouse.read() {
-            delta += event.delta * config.sensitivity;
+            let target: Vec3 = transform.up().into();
+            let right: Vec3 = transform.right().into();
+            let forward: Vec3 = transform.forward().into();
+            let angle_between = forward.angle_between(target);
+            transform.rotate_axis(right, angle_between.min(-delta.y * time.delta_seconds()));
+            transform.rotate_axis(Vec3::Y, delta.x * time.delta_seconds());
+
+            event_writer.send(SunUpdatedEvent);
         }
-
-        let target: Vec3 = transform.up().into();
-        let right: Vec3 = transform.right().into();
-        let forward: Vec3 = transform.forward().into();
-        let angle_between = forward.angle_between(target);
-        transform.rotate_axis(right, angle_between.min(-delta.y * time.delta_seconds()));
-        transform.rotate_axis(Vec3::Y, delta.x * time.delta_seconds());
-
-        event_writer.send(SunUpdatedEvent);
     }
 }
 
 fn draw_sun_gizmo(
-    directional_light: Query<&mut Transform, With<DirectionalLight>>,
-    camera: Query<(&Camera, &GlobalTransform)>,
+    directional_light: Query<(&Transform, &SunGizmo)>,
+    camera: Query<(&Camera, &GlobalTransform), With<SunGizmoCamera>>,
     mut gizmos: Gizmos<SunGizmoGroup>,
     mut event_reader: EventReader<SunUpdatedEvent>,
     mut persist_time: Local<f32>,
@@ -124,9 +141,6 @@ fn draw_sun_gizmo(
 
     *persist_time -= time.delta_seconds();
 
-    let Ok(directional_light) = directional_light.get_single() else {
-        return;
-    };
     let Ok((camera, camera_transform)) = camera.get_single() else {
         return;
     };
@@ -165,15 +179,17 @@ fn draw_sun_gizmo(
     gizmos.arrow(origin, origin + Vec3::Y, y_color);
     gizmos.arrow(origin, origin + Vec3::Z, z_color);
 
-    let light_dir = *directional_light.forward();
-    let start = origin - light_dir * 1.2;
-    let end = origin - light_dir * 0.2;
-    gizmos.arrow(start, end, Color::YELLOW);
+    for (light, sun_gizmo) in directional_light.iter() {
+        let light_dir = *light.forward();
+        let start = origin - light_dir * 1.2;
+        let end = origin - light_dir * 0.2;
+        gizmos.arrow(start, end, sun_gizmo.color);
 
-    let projected_start = Vec3::new(start.x, origin.y, start.z);
-    let x_axis_proj = Vec3::new(start.x, origin.y, origin.z);
-    let z_axis_proj = Vec3::new(origin.x, origin.y, start.z);
-    gizmos.line(start, projected_start, y_color);
-    gizmos.line(projected_start, x_axis_proj, z_color);
-    gizmos.line(projected_start, z_axis_proj, x_color);
+        let projected_start = Vec3::new(start.x, origin.y, start.z);
+        let x_axis_proj = Vec3::new(start.x, origin.y, origin.z);
+        let z_axis_proj = Vec3::new(origin.x, origin.y, start.z);
+        gizmos.line(start, projected_start, y_color);
+        gizmos.line(projected_start, x_axis_proj, z_color);
+        gizmos.line(projected_start, z_axis_proj, x_color);
+    }
 }
