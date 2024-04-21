@@ -36,7 +36,7 @@ Check out the examples for more details.
 
 | bevy | bevy_sun_gizmo |
 |------|----------------------|
-| 0.13 | 0.1.0                |
+| 0.13 | 0.1.0-0.1.1          |
 
 ## License
 
