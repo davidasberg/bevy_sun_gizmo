@@ -883,7 +883,7 @@ dependencies = [
 
 [[package]]
 name = "bevy_sun_gizmo"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "bevy",
  "bevy_panorbit_camera",
