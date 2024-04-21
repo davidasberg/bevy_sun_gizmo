@@ -47,12 +47,12 @@ impl Plugin for SunGizmoPlugin {
             })
             .insert_gizmo_group(
                 SunGizmoGroup {
-                    pos: Vec2::new(0.7, 0.7),
-                    size: 0.1,
-                    persist_time: 5.0,
+                    pos: self.position,
+                    size: self.size,
+                    persist_time: self.persist_time,
                 },
                 GizmoConfig {
-                    line_width: 4.0,
+                    line_width: self.line_width,
                     depth_bias: -1.0,
                     ..default()
                 },
